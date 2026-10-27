@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>iPod Web</title>
+<style>
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{height:100%;background:#000;color:#e8eef7;font:15px -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden;overscroll-behavior:none}
+body{display:grid;place-items:center}
+.ipod{width:min(100vw - 16px,380px);height:min(100dvh - 16px,700px);border-radius:38px;padding:16px 16px 22px;display:flex;flex-direction:column;gap:16px;background:linear-gradient(145deg,#2b2b30,#101012 55%,#1b1b1f);box-shadow:inset 0 0 0 1px #3a3a40,0 20px 60px #000,0 0 0 1px #000}
+.bezel{flex:1;min-height:0;background:#000;border-radius:14px;padding:8px;box-shadow:inset 0 0 0 1px #333}
+.screen{height:100%;border-radius:8px;overflow:hidden;background:linear-gradient(#0f141b,#090c11);display:flex;flex-direction:column;position:relative}
+.hd{display:flex;align-items:center;gap:8px;padding:6px 10px;background:linear-gradient(#323d4d,#161c26);font-weight:600;font-size:13px;border-bottom:1px solid #000}
+.hd b{flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd i{width:16px;font-style:normal;font-size:10px;color:#6cb6ff}
+.hd u{width:22px;height:10px;border:1px solid #9ab;border-radius:2px;background:linear-gradient(90deg,#4c8 80%,transparent 80%)}
+#menu{flex:1;overflow:hidden}
+.row{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid #1a212b;white-space:nowrap}
+.row span{overflow:hidden;text-overflow:ellipsis}
+.row.on{background:linear-gradient(#4aa3ff,#1c64d8);color:#fff}
+#np{display:none;flex:1;flex-direction:column;align-items:center;padding:10px 14px;gap:6px;min-height:0}
+.screen.np #menu{display:none}.screen.np #np{display:flex}
+.art{flex:1;min-height:56px;max-height:150px;aspect-ratio:1;background:#1a2230;border-radius:6px;overflow:hidden;display:grid;place-items:center;font-size:44px;color:#456}
+.yt .art{aspect-ratio:16/9;width:80%;flex:none;max-height:none}
+#yt,#yt iframe{display:none;width:100%;height:100%;border:0}
+.yt #yt{display:block}
+#cv{width:100%;height:100%;object-fit:cover;display:none}
+.meta{width:100%;text-align:center}
+.meta h2{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta p{color:#8fa0b8;font-size:13px;min-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{width:100%;height:8px;border-radius:4px;background:#243044;overflow:hidden;cursor:pointer}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(#6cb6ff,#2b74e0)}
+.tm{width:100%;display:flex;justify-content:space-between;font-size:11px;color:#8fa0b8}
+#toast{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:#000d;border:1px solid #345;padding:5px 12px;border-radius:14px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+#toast.on{opacity:1}
+.wheel{align-self:center;flex:none;width:min(76vw,300px,40dvh);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 35%,#2d2d32,#161619);box-shadow:inset 0 0 0 1px #3a3a40,0 4px 14px #000;position:relative;touch-action:none}
+.wheel span{position:absolute;color:#9a9aa3;font-weight:700;font-size:13px;pointer-events:none}
+.l1{top:9%;left:50%;transform:translateX(-50%)}.l2{right:10%;top:50%;transform:translateY(-50%)}.l3{bottom:9%;left:50%;transform:translateX(-50%)}.l4{left:10%;top:50%;transform:translateY(-50%)}
+.ok{position:absolute;inset:31%;border-radius:50%;background:radial-gradient(#1d1d21,#0c0c0e);box-shadow:inset 0 0 0 1px #333;pointer-events:none}
+</style></head><body>
+<div class="ipod">
+ <div class="bezel"><div class="screen" id="scr">
+  <div class="hd"><i id="pi"></i><b id="hd">iPod</b><u></u></div>
+  <div id="menu"></div>
+  <div id="np">
+   <div class="art"><img id="cv" alt=""><div id="yt"></div><span id="ph">♪</span></div>
+   <div class="meta"><h2 id="nt"></h2><p id="na"></p></div>
+   <div class="bar" id="bar"><i id="bf"></i></div>
+   <div class="tm"><span id="tc">0:00</span><span id="tr">-0:00</span></div>
+  </div>
+  <div id="toast"></div>
+ </div></div>
+ <div class="wheel" id="w"><span class="l1">MENU</span><span class="l2">⏭</span><span class="l3">⏯</span><span class="l4">⏮</span><div class="ok"></div></div>
+</div>
+<input type="file" id="fa" accept="audio/*" multiple hidden>
+<input type="file" id="fd" webkitdirectory multiple hidden>
+<input type="file" id="fp" accept=".m3u,.m3u8,.pls,.json" multiple hidden>
+<script>
+const $=s=>document.querySelector(s),LS=localStorage,redir=location.origin+location.pathname;
+let cfg={spid:'',shuf:0,rep:0,vol:.8,yt:[]};
+try{Object.assign(cfg,JSON.parse(LS.ip_cfg||'{}'))}catch{}
+const save=()=>LS.ip_cfg=JSON.stringify(cfg);
+const lib=[],pls=[],S=[],au=new Audio();
+let mode=null,Q=[],qi=0,view='menu',yt=null,ytR=0,pt,tt,vt,lastT;
+const sp={dev:null,i:{t:'Spotify',a:'',d:0,p:0,pl:false,ts:0}};
+au.volume=cfg.vol;au.onended=()=>next(1);au.onerror=()=>toast('No se pudo reproducir');
+const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800)}
+const er=e=>toast(e.message||String(e));
+
+/* ---------- Menús ---------- */
+function show(v){view=v||view;$('#scr').classList.toggle('np',view=='np');$('#scr').classList.toggle('yt',mode=='yt')}
+function render(){const m=S[S.length-1],L=$('#menu');$('#hd').textContent=m.t;L.innerHTML='';
+ m.items.forEach((it,i)=>{const d=document.createElement('div');d.className='row'+(i==m.s?' on':'');const a=document.createElement('span');a.textContent=it.l;d.append(a);
+  if(it.sub||it.go){const b=document.createElement('b');b.textContent='›';d.append(b)}
+  d.onclick=()=>{m.s=i;act()};L.append(d)});
+ L.children[m.s]?.scrollIntoView({block:'nearest'})}
+function refresh(){const m=S[S.length-1],r=m.f();if(!(r instanceof Promise))m.items=r.length?r:[{l:'(vacío)'}];render()}
+async function push(t,f){const m={t,f,items:[{l:'Cargando…'}],s:0};S.push(m);show('menu');render();
+ try{const r=await f();m.items=r.length?r:[{l:'(vacío)'}]}catch(e){m.items=[{l:'Error: '+(e.message||e)}]}render()}
+function act(){const m=S[S.length-1],it=m.items[m.s];if(!it)return;
+ if(it.sub)push(it.l,it.sub);else if(it.go&&it.go()==='r'){m.items=m.f();render()}}
+function back(){if(view=='np'){show('menu');refresh()}else if(S.length>1){S.pop();show('menu');refresh()}else if(mode)show('np')}
+function step(d){navigator.vibrate?.(4);if(view=='np')return setVol(cfg.vol+d*.04);
+ const m=S[S.length-1];m.s=Math.max(0,Math.min(m.items.length-1,m.s+d));render()}
+const select=()=>view=='np'?toggle():act();
+
+const root=()=>[...(mode?[{l:'Reproduciendo',go:()=>show('np')}]:[]),
+ {l:'Música',sub:()=>[{l:'Canciones ('+lib.length+')',sub:songs},{l:'Playlists ('+pls.length+')',sub:plMenu},
+  {l:'Reproducir aleatorio',go:()=>lib.length?(cfg.shuf=1,playQ(lib,Math.random()*lib.length|0)):toast('Carga música primero')}]},
+ {l:'Spotify',sub:spMenu},{l:'YouTube Music',sub:ytMenu},
+ {l:'Archivos',sub:()=>[{l:'Elegir archivos',go:()=>$('#fa').click()},{l:'Elegir carpeta',go:()=>$('#fd').click()},{l:'Cargar playlist (.m3u .pls .json)',go:()=>$('#fp').click()}]},
+ {l:'Ajustes',sub:setMenu}];
+const songs=()=>lib.length?lib.map((t,i)=>({l:(t.a?t.a+' – ':'')+t.t,go:()=>playQ(lib,i)})):[{l:'Elige archivos o una carpeta'}];
+const plMenu=()=>pls.length?pls.map(p=>({l:p.n+' ('+p.e.length+')',go:()=>playPL(p)})):[{l:'Carga un archivo de playlist'}];
+const setMenu=()=>[{l:'Aleatorio: '+(cfg.shuf?'sí':'no'),go:()=>{cfg.shuf^=1;save();return'r'}},
+ {l:'Repetir: '+['no','todo','una'][cfg.rep],go:()=>{cfg.rep=(cfg.rep+1)%3;save();return'r'}},
+ {l:'Borrar datos guardados',go:()=>{if(confirm('¿Borrar ajustes, enlaces y sesión de Spotify?')){LS.clear();location.reload()}}}];
+
+/* ---------- Archivos locales y playlists ---------- */
+function addFiles(fs){let n=0;for(const f of fs){
+ if(!(f.type.startsWith('audio')||/\.(mp3|m4a|flac|ogg|opus|wav|aac)$/i.test(f.name)))continue;
+ let t=f.name.replace(/\.\w+$/,''),a='';const m=t.match(/^(.+?) - (.+)$/);if(m){a=m[1];t=m[2]}
+ lib.push({k:'au',u:URL.createObjectURL(f),t,a,n:f.name.toLowerCase()});n++}
+ lib.sort((x,y)=>x.n<y.n?-1:1);toast(n+' canciones añadidas');refresh()}
+function loadPL(name,txt){const e=[];try{
+ if(/\.json$/i.test(name))JSON.parse(txt).forEach(x=>e.push(typeof x=='string'?{p:x}:{p:x.url||x.path||x.file,t:x.title,a:x.artist}));
+ else if(/\.pls$/i.test(name)){const T={};txt.split(/\r?\n/).forEach(l=>{const m=l.match(/^(File|Title)(\d+)=(.*)/i);if(m)(T[m[2]]??={})[m[1].toLowerCase()]=m[3].trim()});
+  Object.values(T).forEach(o=>o.file&&e.push({p:o.file,t:o.title}))}
+ else{let t;txt.split(/\r?\n/).forEach(l=>{l=l.trim();if(!l)return;if(l[0]=='#'){const m=l.match(/^#EXTINF:[^,]*,(.*)/);if(m)t=m[1];return}e.push({p:l,t});t=null})}
+ }catch{return toast('Playlist no válida')}
+ pls.push({n:name.replace(/\.\w+$/,''),e});toast('Playlist cargada: '+e.length+' pistas');refresh()}
+function playPL(p){const q=p.e.map(x=>{if(/^https?:/i.test(x.p))return{k:'au',u:x.p,t:x.t||x.p.split('/').pop(),a:x.a||''};
+ const b=x.p.split(/[\\/]/).pop().toLowerCase();return lib.find(l=>l.n==b)}).filter(Boolean);
+ q.length?playQ(q,0):toast('Primero carga las canciones de esta playlist')}
+$('#fa').onchange=$('#fd').onchange=e=>{addFiles(e.target.files);e.target.value=''};
+$('#fp').onchange=async e=>{for(const f of e.target.files)loadPL(f.name,await f.text());e.target.value=''};
+
+/* ---------- Motor de reproducción ---------- */
+function stopAll(){au.pause();try{yt&&ytR&&yt.pauseVideo()}catch{}if(mode=='sp')api('/me/player/pause','PUT').catch(()=>{});clearInterval(pt)}
+function playQ(q,i){Q=q;qi=i;load()}
+function load(){const t=Q[qi];if(!t)return;stopAll();
+ if(t.k=='yt'){mode='yt';ytPlay(t)}else{mode='au';au.src=t.u;au.play().catch(er)}show('np')}
+function stepQ(d,auto){if(!Q.length)return;if(cfg.rep==2&&auto)return load();
+ let i=cfg.shuf&&Q.length>1?Math.floor(Math.random()*Q.length):qi+d;
+ if(i>=Q.length){if(cfg.rep||!auto)i=0;else return au.pause()}if(i<0)i=Q.length-1;qi=i;load()}
+function next(auto){if(!mode)return;
+ if(mode=='sp'){api('/me/player/next','POST').then(()=>setTimeout(spPoll,700)).catch(er);return}
+ if(mode=='yt'&&yt.getPlaylist&&yt.getPlaylist())return yt.nextVideo();stepQ(1,auto)}
+function prev(){if(!mode)return;
+ if(mode=='sp'){api('/me/player/previous','POST').then(()=>setTimeout(spPoll,700)).catch(er);return}
+ if(info().p>3)return seek(0);
+ if(mode=='yt'&&yt.getPlaylist&&yt.getPlaylist())return yt.previousVideo();stepQ(-1)}
+function toggle(){if(!mode)return;
+ if(mode=='au')au.paused?au.play():au.pause();
+ else if(mode=='yt')yt.getPlayerState()==1?yt.pauseVideo():yt.playVideo();
+ else{const p=sp.i.pl,c=info().p;sp.i.p=c;sp.i.ts=Date.now();sp.i.pl=!p;api('/me/player/'+(p?'pause':'play'),'PUT').catch(er)}}
+function seek(s){if(mode=='au')au.currentTime=s;else if(mode=='yt')yt.seekTo(s,true);
+ else if(mode=='sp'){sp.i.p=s;sp.i.ts=Date.now();api('/me/player/seek?position_ms='+Math.round(s*1e3),'PUT').catch(er)}}
+function setVol(v){cfg.vol=Math.max(0,Math.min(1,v));au.volume=cfg.vol;try{yt&&ytR&&yt.setVolume(cfg.vol*100)}catch{}
+ if(mode=='sp'){clearTimeout(vt);vt=setTimeout(()=>api('/me/player/volume?volume_percent='+Math.round(cfg.vol*100),'PUT').catch(()=>{}),300)}
+ save();toast('Volumen '+Math.round(cfg.vol*100)+'%')}
+function info(){
+ if(mode=='au'){const q=Q[qi]||{};return{t:q.t,a:q.a,d:au.duration||0,p:au.currentTime,pl:!au.paused}}
+ if(mode=='yt'&&ytR){const v=yt.getVideoData?.()||{};return{t:v.title||'YouTube',a:v.author||'',d:yt.getDuration?.()||0,p:yt.getCurrentTime?.()||0,pl:yt.getPlayerState?.()==1}}
+ if(mode=='sp')return{...sp.i,p:sp.i.p+(sp.i.pl?(Date.now()-sp.i.ts)/1e3:0)};
+ return{t:'Nada en reproducción',a:'',d:0,p:0,pl:false}}
+
+/* ---------- YouTube / YouTube Music (enlaces, vía IFrame API) ---------- */
+function ytParse(s){try{const u=new URL(s.trim()),v=u.hostname.includes('youtu.be')?u.pathname.slice(1):u.searchParams.get('v'),l=u.searchParams.get('list');
+ if(l&&/^(PL|OLAK|UU|FL|LL)/.test(l))return{k:'yt',l};return v?{k:'yt',v}:null}catch{return null}}
+function ytAdd(){const s=prompt('Pega un enlace de YouTube o YouTube Music (video o playlist)');if(!s)return;
+ const e=ytParse(s);if(!e)return toast('Enlace no válido');cfg.yt.push(e);save();playQ(cfg.yt,cfg.yt.length-1)}
+const ytMenu=()=>[{l:'Pegar enlace…',go:ytAdd},...cfg.yt.map((e,i)=>({l:e.n||(e.l?'Playlist …'+e.l.slice(-5):'Video '+e.v),go:()=>playQ(cfg.yt,i)}))];
+function ytPlay(e){const go=()=>{e.l?yt.loadPlaylist({list:e.l,listType:'playlist'}):yt.loadVideoById(e.v);yt.setVolume(cfg.vol*100)};
+ const init=()=>{if(yt)return ytR?go():0;yt=new YT.Player('yt',{width:'100%',height:'100%',playerVars:{playsinline:1,controls:0,rel:0},
+  events:{onReady:()=>{ytR=1;go()},onStateChange:ytState}})};
+ if(window.YT&&YT.Player)init();else{window.onYouTubeIframeAPIReady=init;const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.append(s)}}
+function ytState(e){const s=e.data,y=e.target;
+ if(s==0&&!(y.getPlaylist&&y.getPlaylist()))next(1);
+ if(s==1){const t=Q[qi];if(t&&!t.n&&t.v){t.n=y.getVideoData().title;save()}}}
+
+/* ---------- Spotify (PKCE + Web API; controla tu app o el navegador) ---------- */
+const SC='playlist-read-private user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private';
+async function tokenReq(o){const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:cfg.spid,...o})});
+ if(!r.ok)throw Error('Error de acceso a Spotify');return r.json()}
+async function tok(){let s=JSON.parse(LS.ip_sp||'null');if(!s)return;
+ if(Date.now()>s.e-6e4){const j=await tokenReq({grant_type:'refresh_token',refresh_token:s.r});s={a:j.access_token,r:j.refresh_token||s.r,e:Date.now()+j.expires_in*1e3};LS.ip_sp=JSON.stringify(s)}return s.a}
+async function api(p,m='GET',b){const t=await tok();if(!t)throw Error('Conecta Spotify primero');
+ const r=await fetch('https://api.spotify.com/v1'+p,{method:m,headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+ if(r.status==204||r.status==202)return null;const j=await r.json().catch(()=>null);if(!r.ok)throw Error(j?.error?.message||('Spotify '+r.status));return j}
+async function spLogin(){if(!cfg.spid)return toast('Primero configura tu Client ID');
+ const v=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(48)))).replace(/[+/=]/g,'x');LS.ip_v=v;
+ const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)),c=btoa(String.fromCharCode(...new Uint8Array(h))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+ location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({response_type:'code',client_id:cfg.spid,scope:SC,redirect_uri:redir,code_challenge_method:'S256',code_challenge:c})}
+const spMenu=()=>[...(LS.ip_sp?[{l:'Mis playlists',sub:spLists},{l:'Cerrar sesión',go:()=>{delete LS.ip_sp;toast('Sesión cerrada');return'r'}}]:[{l:'Conectar con Spotify',go:spLogin}]),
+ {l:'Client ID',go:()=>{const s=prompt('Client ID de tu app de Spotify.\nRedirect URI a registrar:\n'+redir,cfg.spid);if(s!=null){cfg.spid=s.trim();save()}}}];
+async function spLists(){const j=await api('/me/playlists?limit=50');return j.items.filter(Boolean).map(p=>({l:p.name,go:()=>spPlay(p.uri)}))}
+async function spPlay(uri){try{stopAll();mode='sp';sp.i={t:'Conectando…',a:'',d:0,p:0,pl:false,ts:Date.now()};show('np');
+ let d=sp.dev;if(!d){const j=await api('/me/player/devices'),x=j.devices.find(x=>x.is_active)||j.devices[0];if(!x)throw Error('Abre la app de Spotify y reintenta');d=x.id}
+ await api('/me/player/play?device_id='+d,'PUT',{context_uri:uri});pt=setInterval(spPoll,2500);setTimeout(spPoll,800)}catch(e){er(e)}}
+async function spPoll(){if(mode!='sp')return;try{const j=await api('/me/player');
+ if(j&&j.item)sp.i={t:j.item.name,a:j.item.artists.map(a=>a.name).join(', '),art:j.item.album?.images?.[0]?.url,d:j.item.duration_ms/1e3,p:j.progress_ms/1e3,pl:j.is_playing,ts:Date.now()}}catch{}}
+function spSDK(){if(!LS.ip_sp||window.Spotify)return;
+ window.onSpotifyWebPlaybackSDKReady=()=>{const p=new Spotify.Player({name:'iPod Web',getOAuthToken:async cb=>cb(await tok()),volume:cfg.vol});p.addListener('ready',e=>sp.dev=e.device_id);p.connect()};
+ const s=document.createElement('script');s.src='https://sdk.scdn.co/spotify-player.js';document.head.append(s)}
+const qs=new URLSearchParams(location.search);
+if(qs.get('code')&&cfg.spid)tokenReq({grant_type:'authorization_code',code:qs.get('code'),redirect_uri:redir,code_verifier:LS.ip_v})
+ .then(j=>{LS.ip_sp=JSON.stringify({a:j.access_token,r:j.refresh_token,e:Date.now()+j.expires_in*1e3});spSDK()}).catch(er).finally(()=>history.replaceState({},'',redir));
+
+/* ---------- Rueda táctil ---------- */
+const W=$('#w');let la=null,ac=0,tot=0,t0=0;
+const ang=e=>{const r=W.getBoundingClientRect();return Math.atan2(e.clientY-r.top-r.height/2,e.clientX-r.left-r.width/2)*180/Math.PI};
+W.onpointerdown=e=>{W.setPointerCapture(e.pointerId);la=ang(e);ac=tot=0;t0=Date.now()};
+W.onpointermove=e=>{if(la==null)return;const a=ang(e);let d=a-la;if(d>180)d-=360;if(d<-180)d+=360;la=a;ac+=d;tot+=Math.abs(d);
+ while(ac>=24){ac-=24;step(1)}while(ac<=-24){ac+=24;step(-1)}};
+W.onpointerup=e=>{if(la!=null&&tot<12&&Date.now()-t0<600)tap(e);la=null};
+W.onpointercancel=()=>la=null;
+function tap(e){const r=W.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
+ navigator.vibrate?.(8);if(Math.hypot(x,y)<r.width*.19)return select();
+ Math.abs(y)>Math.abs(x)?(y<0?back():toggle()):(x>0?next():prev())}
+onkeydown=e=>({ArrowDown:()=>step(1),ArrowUp:()=>step(-1),ArrowRight:()=>next(),ArrowLeft:prev,Enter:select,Escape:back,' ':toggle})[e.key]?.();
+$('#bar').onclick=e=>{const r=e.currentTarget.getBoundingClientRect(),i=info();if(i.d)seek((e.clientX-r.left)/r.width*i.d)};
+
+/* ---------- Pantalla y controles del sistema ---------- */
+setInterval(()=>{const i=info(),c=$('#cv');
+ $('#nt').textContent=i.t||'—';$('#na').textContent=i.a||'';$('#pi').textContent=i.pl?'▶':mode?'❚❚':'';
+ $('#bf').style.width=(i.d?Math.min(1,i.p/i.d)*100:0)+'%';$('#tc').textContent=fmt(i.p);$('#tr').textContent='-'+fmt(Math.max(0,i.d-i.p));
+ const art=mode=='sp'&&i.art;if(art&&c.dataset.s!=i.art){c.dataset.s=i.art;c.src=i.art}
+ c.style.display=art?'block':'none';$('#ph').style.display=(art||mode=='yt')?'none':'block';
+ if(i.t!=lastT){lastT=i.t;if('mediaSession'in navigator)navigator.mediaSession.metadata=new MediaMetadata({title:i.t||'',artist:i.a||''})}},400);
+if('mediaSession'in navigator)[['play',toggle],['pause',toggle],['nexttrack',()=>next()],['previoustrack',prev]].forEach(([a,f])=>{try{navigator.mediaSession.setActionHandler(a,f)}catch{}});
+push('iPod',root);spSDK();
+</script></body></html>
